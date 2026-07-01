@@ -13,9 +13,20 @@ function apiBaseToWsUrl(apiBaseUrl) {
   return url.toString();
 }
 
+function normalizeWsUrl(wsUrl) {
+  if (!wsUrl) return "";
+  const url = new URL(wsUrl, window.location.origin);
+  url.protocol = url.protocol === "https:" ? "wss:" : url.protocol;
+  url.protocol = url.protocol === "http:" ? "ws:" : url.protocol;
+  if (!url.pathname || url.pathname === "/") {
+    url.pathname = "/ws";
+  }
+  return url.toString();
+}
+
 function getWsUrl(token) {
   const baseUrl =
-    import.meta.env.VITE_WS_URL ||
+    normalizeWsUrl(import.meta.env.VITE_WS_URL) ||
     apiBaseToWsUrl(import.meta.env.VITE_API_BASE_URL) ||
     (() => {
       const protocol = window.location.protocol === "https:" ? "wss" : "ws";
