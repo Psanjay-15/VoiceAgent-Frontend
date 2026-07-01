@@ -1,13 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const SAMPLE_RATE = 24000;
+const RECORDER_TIMESLICE_MS = Number(import.meta.env.VITE_RECORDER_TIMESLICE_MS || 120);
+
+function apiBaseToWsUrl(apiBaseUrl) {
+  if (!apiBaseUrl) return "";
+  const url = new URL(apiBaseUrl, window.location.origin);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.pathname = "/ws";
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}
 
 function getWsUrl(token) {
   const baseUrl =
     import.meta.env.VITE_WS_URL ||
+    apiBaseToWsUrl(import.meta.env.VITE_API_BASE_URL) ||
     (() => {
       const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-      return `${protocol}://localhost:8000/ws`;
+      return `${protocol}://${window.location.host}/ws`;
     })();
   if (!token) return baseUrl;
   const separator = baseUrl.includes("?") ? "&" : "?";
@@ -197,7 +209,7 @@ export function useVoiceAgent(token) {
             ws.send(await event.data.arrayBuffer());
           }
         };
-        recorder.start(250);
+        recorder.start(RECORDER_TIMESLICE_MS);
       };
 
       ws.onmessage = async (event) => {
@@ -242,7 +254,7 @@ export function useVoiceAgent(token) {
       };
 
       ws.onerror = () => {
-        setError("Could not connect to the voice server.");
+        setError(`Could not connect to the voice server at ${getWsUrl(token).split("?")[0]}.`);
         stop();
       };
     } catch (err) {
