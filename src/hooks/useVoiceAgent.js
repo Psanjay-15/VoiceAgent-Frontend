@@ -46,7 +46,7 @@ function mergeTranscript(turns, text, isFinal) {
   return [...turns, { role: "user", text: finalText, live: false }];
 }
 
-async function playLinear16(arrayBuffer, audioContextRef, nextStartRef) {
+async function playLinear16(arrayBuffer, audioContextRef, nextStartRef, activeSourcesRef) {
   const context =
     audioContextRef.current ||
     new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE });
@@ -63,10 +63,24 @@ async function playLinear16(arrayBuffer, audioContextRef, nextStartRef) {
   const source = context.createBufferSource();
   source.buffer = audioBuffer;
   source.connect(context.destination);
+  activeSourcesRef.current.add(source);
+  source.onended = () => activeSourcesRef.current.delete(source);
 
   const startAt = Math.max(context.currentTime + 0.02, nextStartRef.current);
   source.start(startAt);
   nextStartRef.current = startAt + audioBuffer.duration;
+}
+
+function stopQueuedAudio(audioContextRef, nextStartRef, activeSourcesRef) {
+  activeSourcesRef.current.forEach((source) => {
+    try {
+      source.stop();
+    } catch {
+      // Source may already have ended.
+    }
+  });
+  activeSourcesRef.current.clear();
+  nextStartRef.current = audioContextRef.current?.currentTime || 0;
 }
 
 export function useVoiceAgent(token) {
@@ -86,6 +100,9 @@ export function useVoiceAgent(token) {
   const streamRef = useRef(null);
   const audioContextRef = useRef(null);
   const nextStartRef = useRef(0);
+  const activeSourcesRef = useRef(new Set());
+  const statusRef = useRef("idle");
+  const interruptSentRef = useRef(false);
   const awaitingResponseSinceRef = useRef(null);
   const textLatencyCapturedRef = useRef(false);
   const audioLatencyCapturedRef = useRef(false);
@@ -124,6 +141,7 @@ export function useVoiceAgent(token) {
   }, []);
 
   const stop = useCallback(() => {
+    stopQueuedAudio(audioContextRef, nextStartRef, activeSourcesRef);
     recorderRef.current?.stop();
     streamRef.current?.getTracks().forEach((track) => track.stop());
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -134,20 +152,43 @@ export function useVoiceAgent(token) {
     streamRef.current = null;
     wsRef.current = null;
     setStatus("idle");
+    statusRef.current = "idle";
   }, []);
+
+  const updateStatus = useCallback((nextStatus) => {
+    statusRef.current = nextStatus;
+    setStatus(nextStatus);
+  }, []);
+
+  const interruptAssistant = useCallback(() => {
+    if (interruptSentRef.current || statusRef.current !== "speaking") return;
+    interruptSentRef.current = true;
+    stopQueuedAudio(audioContextRef, nextStartRef, activeSourcesRef);
+    setTurns(finalizeAssistant);
+    updateStatus("listening");
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "interrupt" }));
+    }
+  }, [updateStatus]);
 
   const start = useCallback(async () => {
     setError("");
-    setStatus("connecting");
+    updateStatus("connecting");
     try {
       const ws = new WebSocket(getWsUrl(token));
       ws.binaryType = "arraybuffer";
       wsRef.current = ws;
 
       ws.onopen = async () => {
-        setStatus("listening");
+        updateStatus("listening");
         ws.send(JSON.stringify({ type: "start" }));
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        });
         streamRef.current = stream;
         const recorder = new MediaRecorder(stream);
         recorderRef.current = recorder;
@@ -163,31 +204,41 @@ export function useVoiceAgent(token) {
         if (typeof event.data === "string") {
           const payload = JSON.parse(event.data);
           if (payload.type === "transcript") {
+            if (payload.text?.trim()) interruptAssistant();
             setTurns((current) => mergeTranscript(current, payload.text, payload.is_final));
             if (payload.is_final && payload.text?.trim()) markUserFinished();
           }
           if (payload.type === "llm_start" && awaitingResponseSinceRef.current) {
             setLatency((current) => ({ ...current, state: "thinking" }));
           }
+          if (payload.type === "llm_start") {
+            interruptSentRef.current = false;
+          }
           if (payload.type === "llm") {
             captureFirstTextLatency();
-            setStatus("speaking");
+            updateStatus("speaking");
             setTurns((current) => appendToken(current, payload.text));
           }
           if (payload.type === "llm_end") {
-            setStatus("listening");
+            updateStatus("listening");
+            setTurns(finalizeAssistant);
+          }
+          if (payload.type === "llm_interrupted") {
+            stopQueuedAudio(audioContextRef, nextStartRef, activeSourcesRef);
+            updateStatus("listening");
             setTurns(finalizeAssistant);
           }
           return;
         }
         captureFirstAudioLatency();
-        await playLinear16(event.data, audioContextRef, nextStartRef);
+        await playLinear16(event.data, audioContextRef, nextStartRef, activeSourcesRef);
       };
 
       ws.onclose = () => {
+        stopQueuedAudio(audioContextRef, nextStartRef, activeSourcesRef);
         recorderRef.current?.stop();
         streamRef.current?.getTracks().forEach((track) => track.stop());
-        setStatus("idle");
+        updateStatus("idle");
       };
 
       ws.onerror = () => {
@@ -201,9 +252,11 @@ export function useVoiceAgent(token) {
   }, [
     captureFirstAudioLatency,
     captureFirstTextLatency,
+    interruptAssistant,
     markUserFinished,
     stop,
     token,
+    updateStatus,
   ]);
 
   useEffect(() => stop, [stop]);
