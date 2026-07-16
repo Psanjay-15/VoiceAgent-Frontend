@@ -24,7 +24,7 @@ function normalizeWsUrl(wsUrl) {
   return url.toString();
 }
 
-function getWsUrl(token) {
+function getWsUrl(token, email) {
   const baseUrl =
     normalizeWsUrl(import.meta.env.VITE_WS_URL) ||
     apiBaseToWsUrl(import.meta.env.VITE_API_BASE_URL) ||
@@ -32,9 +32,12 @@ function getWsUrl(token) {
       const protocol = window.location.protocol === "https:" ? "wss" : "ws";
       return `${protocol}://${window.location.host}/ws`;
     })();
-  if (!token) return baseUrl;
+  const params = new URLSearchParams();
+  if (token) params.set("token", token);
+  if (email) params.set("email", email);
+  if (!params.toString()) return baseUrl;
   const separator = baseUrl.includes("?") ? "&" : "?";
-  return `${baseUrl}${separator}token=${encodeURIComponent(token)}`;
+  return `${baseUrl}${separator}${params.toString()}`;
 }
 
 function appendToken(turns, token) {
@@ -106,7 +109,7 @@ function stopQueuedAudio(audioContextRef, nextStartRef, activeSourcesRef) {
   nextStartRef.current = audioContextRef.current?.currentTime || 0;
 }
 
-export function useVoiceAgent(token) {
+export function useVoiceAgent(token, email) {
   const [status, setStatus] = useState("idle");
   const [turns, setTurns] = useState([
     { role: "assistant", text: "Click on Start talking." },
@@ -163,25 +166,25 @@ export function useVoiceAgent(token) {
     }));
   }, []);
 
+  const updateStatus = useCallback((nextStatus) => {
+    statusRef.current = nextStatus;
+    setStatus(nextStatus);
+  }, []);
+
   const stop = useCallback(() => {
     stopQueuedAudio(audioContextRef, nextStartRef, activeSourcesRef);
     recorderRef.current?.stop();
     streamRef.current?.getTracks().forEach((track) => track.stop());
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "stop" }));
-      wsRef.current.close();
+      updateStatus("closing");
+      return;
     }
     recorderRef.current = null;
     streamRef.current = null;
     wsRef.current = null;
-    setStatus("idle");
-    statusRef.current = "idle";
-  }, []);
-
-  const updateStatus = useCallback((nextStatus) => {
-    statusRef.current = nextStatus;
-    setStatus(nextStatus);
-  }, []);
+    updateStatus("idle");
+  }, [updateStatus]);
 
   const interruptAssistant = useCallback(() => {
     if (interruptSentRef.current || statusRef.current !== "speaking") return;
@@ -198,7 +201,7 @@ export function useVoiceAgent(token) {
     setError("");
     updateStatus("connecting");
     try {
-      const ws = new WebSocket(getWsUrl(token));
+      const ws = new WebSocket(getWsUrl(token, email));
       ws.binaryType = "arraybuffer";
       wsRef.current = ws;
 
@@ -265,7 +268,7 @@ export function useVoiceAgent(token) {
       };
 
       ws.onerror = () => {
-        setError(`Could not connect to the voice server at ${getWsUrl(token).split("?")[0]}.`);
+        setError(`Could not connect to the voice server at ${getWsUrl(token, email).split("?")[0]}.`);
         stop();
       };
     } catch (err) {
@@ -278,6 +281,7 @@ export function useVoiceAgent(token) {
     interruptAssistant,
     markUserFinished,
     stop,
+    email,
     token,
     updateStatus,
   ]);

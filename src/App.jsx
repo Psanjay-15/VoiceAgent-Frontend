@@ -2,21 +2,19 @@ import { useEffect, useState } from "react";
 import { Layout } from "./components/layout/Layout";
 import { LandingPage } from "./pages/LandingPage";
 import { BotPage } from "./pages/BotPage";
-import { AuthPage } from "./pages/AuthPage";
+// import { AuthPage } from "./pages/AuthPage";
 
-function loadStoredAuth() {
+function loadStoredEmail() {
   try {
-    const raw = localStorage.getItem("voice-agent-auth");
-    return raw ? JSON.parse(raw) : null;
+    return localStorage.getItem("voice-agent-email") || "";
   } catch {
-    localStorage.removeItem("voice-agent-auth");
-    return null;
+    return "";
   }
 }
 
 export default function App() {
   const [path, setPath] = useState(window.location.pathname);
-  const [auth, setAuthState] = useState(loadStoredAuth);
+  const [email, setEmailState] = useState(loadStoredEmail);
 
   useEffect(() => {
     const onPopState = () => setPath(window.location.pathname);
@@ -30,21 +28,29 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const setAuth = (value) => {
-    setAuthState(value);
-    if (value) {
-      localStorage.setItem("voice-agent-auth", JSON.stringify(value));
-    } else {
-      localStorage.removeItem("voice-agent-auth");
+  const setEmail = (value) => {
+    const normalized = value.trim().toLowerCase();
+    setEmailState(normalized);
+    try {
+      if (normalized) {
+        localStorage.setItem("voice-agent-email", normalized);
+      } else {
+        localStorage.removeItem("voice-agent-email");
+      }
+    } catch {
+      // Browser storage may be unavailable in strict/private contexts.
     }
   };
 
   const logout = () => {
-    setAuth(null);
-    navigate("/login");
+    setEmail("");
+    navigate("/");
   };
 
+  const auth = email ? { access_token: null, user: { email } } : null;
   let page;
+  /*
+  Login/register flow kept for later use:
   if (!auth) {
     page = (
       <AuthPage
@@ -53,14 +59,12 @@ export default function App() {
         navigate={navigate}
       />
     );
-  } else if (path === "/bot") {
+  }
+  */
+  if (path === "/bot") {
     page = <BotPage auth={auth} navigate={navigate} logout={logout} />;
-  } else if (path === "/login") {
-    page = <LandingPage auth={auth} navigate={navigate} />;
-  } else if (path === "/signup") {
-    page = <LandingPage auth={auth} navigate={navigate} />;
   } else {
-    page = <LandingPage auth={auth} navigate={navigate} />;
+    page = <LandingPage auth={auth} navigate={navigate} setEmail={setEmail} />;
   }
 
   return (

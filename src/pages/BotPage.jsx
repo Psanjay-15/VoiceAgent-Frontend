@@ -47,37 +47,6 @@ const Side = styled(GlassPanel)`
   }
 `;
 
-const LatencyCard = styled.div`
-  margin-top: 14px;
-  padding: 14px;
-  border-radius: 20px;
-  background:
-    linear-gradient(135deg, rgba(255,255,255,0.48), rgba(255,255,255,0.18)),
-    rgba(255,255,255,0.28);
-  border: 1px solid rgba(255,255,255,0.62);
-
-  .label {
-    color: ${({ theme }) => theme.colors.muted};
-    font-size: 12px;
-    font-weight: 850;
-    text-transform: uppercase;
-  }
-
-  .value {
-    margin-top: 5px;
-    color: ${({ theme }) => theme.colors.ink};
-    font-size: 28px;
-    font-weight: 900;
-  }
-
-  .meta {
-    margin-top: 6px;
-    color: ${({ theme }) => theme.colors.muted};
-    font-size: 12px;
-    font-weight: 750;
-  }
-`;
-
 const ChatPanel = styled(GlassPanel)`
   min-height: 0;
   height: 100%;
@@ -163,15 +132,10 @@ const Error = styled.p`
   font-size: 13px;
 `;
 
-function formatLatency(value) {
-  if (value == null) return "--";
-  if (value < 1000) return `${Math.round(value)} ms`;
-  return `${(value / 1000).toFixed(2)} s`;
-}
-
 export function BotPage({ auth }) {
-  const { status, turns, error, latency, start, stop, isActive } = useVoiceAgent(
+  const { status, turns, error, start, stop, isActive } = useVoiceAgent(
     auth?.access_token,
+    auth?.user?.email,
   );
 
   return (
@@ -183,17 +147,8 @@ export function BotPage({ auth }) {
           </Badge>
           <h1>Talk to the real estate agent.</h1>
           <p>
-            Your logged-in email is already verified for online meeting invites.
+            Your email is ready for online meeting invites.
           </p>
-
-          {/* <LatencyCard>
-            <span className="label">User done to first spoken word</span>
-            <div className="value">{formatLatency(latency.firstAudioMs)}</div>
-            <div className="meta">
-              First text: {formatLatency(latency.firstTextMs)} · First audio:{" "}
-              {formatLatency(latency.firstAudioMs)} · {latency.state}
-            </div>
-          </LatencyCard> */}
           {error && <Error>{error}</Error>}
         </Side>
 
@@ -225,7 +180,7 @@ export function BotPage({ auth }) {
                 <Icon name="stop" size={16} /> Stop
               </Button>
             ) : (
-              <Button onClick={start} disabled={!auth}>
+              <Button onClick={start} disabled={!auth?.user?.email}>
                 <Icon name="mic" size={16} /> Start talking
               </Button>
             )}

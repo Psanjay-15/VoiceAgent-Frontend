@@ -10,7 +10,7 @@ const Header = styled.header`
   min-height: ${({ theme }) => theme.layout.navHeight};
   display: flex;
   align-items: center;
-  background: rgba(243, 241, 235, 0.68);
+  background: rgba(246, 244, 239, 0.66);
   border-bottom: 1px solid rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(22px) saturate(180%);
 `;
@@ -123,12 +123,10 @@ export function Navbar({ path, navigate, auth, logout }) {
           {auth && <span className="email">{auth.user.email}</span>}
           {auth ? (
             <Button type="button" $variant="secondary" onClick={logout}>
-              Logout
+              Change email
             </Button>
           ) : (
-            <Button as="a" href="/login" onClick={(event) => go(event, "/login")}>
-              Login
-            </Button>
+            <span className="email">Add email to start</span>
           )}
         </Right>
       </Inner>

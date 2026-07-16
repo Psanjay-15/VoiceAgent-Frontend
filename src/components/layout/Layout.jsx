@@ -19,7 +19,7 @@ const Main = styled.main`
 export function Layout({ children, path, navigate, auth, logout }) {
   return (
     <Shell>
-      {auth && <Navbar path={path} navigate={navigate} auth={auth} logout={logout} />}
+      <Navbar path={path} navigate={navigate} auth={auth} logout={logout} />
       <Main>{children}</Main>
       <Footer />
     </Shell>

@@ -1,4 +1,5 @@
 import styled from "styled-components";
+import { useState } from "react";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Container from "../components/ui/Container";
@@ -64,28 +65,49 @@ const Actions = styled.div`
   margin-top: 30px;
 `;
 
-const HeroMeta = styled.div`
-  display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
-  margin-top: 34px;
-  color: ${({ theme }) => theme.colors.muted};
+const EmailForm = styled.form`
+  margin-top: 30px;
+  max-width: 560px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid rgba(255,255,255,0.72);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.48);
+  box-shadow: ${({ theme }) => theme.shadows.glass};
+  backdrop-filter: blur(24px) saturate(170%);
+
+  input {
+    min-width: 0;
+    padding: 0 14px;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: ${({ theme }) => theme.colors.ink};
+    font-size: 15px;
+    font-weight: 800;
+  }
+
+  input::placeholder {
+    color: ${({ theme }) => theme.colors.faint};
+  }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
+    grid-template-columns: 1fr;
+    border-radius: 26px;
+
+    input {
+      min-height: 46px;
+    }
+  }
+`;
+
+const Helper = styled.div`
+  margin-top: 12px;
+  color: ${({ theme, $error }) => ($error ? theme.colors.copper : theme.colors.muted)};
   font-size: 13px;
-  font-weight: 850;
-
-  span {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  i {
-    width: 8px;
-    height: 8px;
-    border-radius: 999px;
-    background: ${({ theme }) => theme.colors.success};
-    box-shadow: 0 0 0 6px rgba(95, 143, 104, 0.12);
-  }
+  font-weight: 800;
 `;
 
 const Console = styled.aside`
@@ -98,8 +120,8 @@ const Console = styled.aside`
   border: 1px solid rgba(255, 255, 255, 0.78);
   background:
     linear-gradient(145deg, rgba(255,255,255,0.72), rgba(255,255,255,0.24)),
-    radial-gradient(circle at 25% 16%, rgba(194,155,98,0.18), transparent 34%),
-    radial-gradient(circle at 88% 76%, rgba(103,115,91,0.20), transparent 34%);
+    radial-gradient(circle at 25% 16%, rgba(87,135,126,0.20), transparent 34%),
+    radial-gradient(circle at 88% 76%, rgba(182,109,117,0.18), transparent 34%);
   box-shadow:
     0 30px 90px rgba(54, 43, 31, 0.16),
     inset 0 1px 0 rgba(255,255,255,0.88);
@@ -140,8 +162,8 @@ const Orb = styled.div`
   color: #fff;
   background:
     radial-gradient(circle at 32% 26%, rgba(255,255,255,0.88), transparent 14%),
-    radial-gradient(circle at 54% 40%, rgba(194,155,98,0.76), transparent 30%),
-    linear-gradient(135deg, #22271f, #6f8063 52%, #c29b62);
+    radial-gradient(circle at 54% 40%, rgba(211,155,118,0.72), transparent 30%),
+    linear-gradient(135deg, #153839, #5a877e 52%, #b66d75);
   box-shadow:
     0 34px 100px rgba(103, 115, 91, 0.32),
     inset 0 12px 30px rgba(255,255,255,0.20),
@@ -236,7 +258,25 @@ const steps = [
   ["cpu", "LLM-based information", "Understands real estate and renovation queries, then responds with useful next steps."],
 ];
 
-export function LandingPage({ auth, navigate }) {
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+export function LandingPage({ auth, navigate, setEmail }) {
+  const [email, setEmailInput] = useState(auth?.user?.email || "");
+  const [error, setError] = useState("");
+
+  const submit = (event) => {
+    event.preventDefault();
+    if (!isValidEmail(email)) {
+      setError("Please enter a valid email address before opening the bot.");
+      return;
+    }
+    setError("");
+    setEmail(email);
+    navigate("/bot");
+  };
+
   return (
     <Page>
       <Hero>
@@ -249,17 +289,35 @@ export function LandingPage({ auth, navigate }) {
             Qualify buyers, capture renovation needs, schedule Google Meet
             calls, and send clean admin summaries from a real-time voice flow.
           </p>
+          <EmailForm onSubmit={submit}>
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => {
+                setEmailInput(event.target.value);
+                setError("");
+              }}
+              placeholder="Enter your email for meeting invites"
+              aria-label="Email address"
+              required
+            />
+            <Button type="submit" $size="lg">
+              Continue <Icon name="arrowRight" size={17} />
+            </Button>
+          </EmailForm>
+          <Helper $error={Boolean(error)}>
+            {error || "This email will be used for Google Meet invites during the voice call."}
+          </Helper>
           <Actions>
-            <Button onClick={() => navigate("/bot")} $size="lg">
+            <Button
+              type="button"
+              onClick={submit}
+              $size="lg"
+              $variant="secondary"
+            >
               Open bot <Icon name="arrowRight" size={17} />
             </Button>
           </Actions>
-
-          {/* <HeroMeta>
-            <span><i /> Low latency replies</span>
-            <span><i /> Google Meet scheduling</span>
-            <span><i /> LLM-guided information</span>
-          </HeroMeta> */}
         </Intro>
 
         <Console aria-label="Voice agent status">
@@ -270,13 +328,13 @@ export function LandingPage({ auth, navigate }) {
           <Orb>
             <Icon name="mic" size={58} />
           </Orb>
-          {/* <LiveLine>
+          <LiveLine>
             <div className="row">
-              <span>Signed in</span>
-              <span className="status"><Icon name="shield" size={14} /> verified</span>
+              <span>Meeting email</span>
+              <span className="status"><Icon name="shield" size={14} /> ready</span>
             </div>
-            <span className="email">{auth?.user?.email}</span>
-          </LiveLine> */}
+            <span className="email">{auth?.user?.email || "Add your email to continue"}</span>
+          </LiveLine>
         </Console>
       </Hero>
 
