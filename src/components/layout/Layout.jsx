@@ -16,10 +16,10 @@ const Main = styled.main`
   isolation: isolate;
 `;
 
-export function Layout({ children, path, navigate, auth, logout }) {
+export function Layout({ children, path, navigate }) {
   return (
     <Shell>
-      <Navbar path={path} navigate={navigate} auth={auth} logout={logout} />
+      <Navbar path={path} navigate={navigate} />
       <Main>{children}</Main>
       <Footer />
     </Shell>

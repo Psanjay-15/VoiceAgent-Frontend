@@ -4,17 +4,8 @@ import { LandingPage } from "./pages/LandingPage";
 import { BotPage } from "./pages/BotPage";
 // import { AuthPage } from "./pages/AuthPage";
 
-function loadStoredEmail() {
-  try {
-    return localStorage.getItem("voice-agent-email") || "";
-  } catch {
-    return "";
-  }
-}
-
 export default function App() {
   const [path, setPath] = useState(window.location.pathname);
-  const [email, setEmailState] = useState(loadStoredEmail);
 
   useEffect(() => {
     const onPopState = () => setPath(window.location.pathname);
@@ -28,26 +19,6 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const setEmail = (value) => {
-    const normalized = value.trim().toLowerCase();
-    setEmailState(normalized);
-    try {
-      if (normalized) {
-        localStorage.setItem("voice-agent-email", normalized);
-      } else {
-        localStorage.removeItem("voice-agent-email");
-      }
-    } catch {
-      // Browser storage may be unavailable in strict/private contexts.
-    }
-  };
-
-  const logout = () => {
-    setEmail("");
-    navigate("/");
-  };
-
-  const auth = email ? { access_token: null, user: { email } } : null;
   let page;
   /*
   Login/register flow kept for later use:
@@ -62,13 +33,13 @@ export default function App() {
   }
   */
   if (path === "/bot") {
-    page = <BotPage auth={auth} navigate={navigate} logout={logout} />;
+    page = <BotPage />;
   } else {
-    page = <LandingPage auth={auth} navigate={navigate} setEmail={setEmail} />;
+    page = <LandingPage navigate={navigate} />;
   }
 
   return (
-    <Layout path={path} navigate={navigate} auth={auth} logout={logout}>
+    <Layout path={path} navigate={navigate}>
       {page}
     </Layout>
   );

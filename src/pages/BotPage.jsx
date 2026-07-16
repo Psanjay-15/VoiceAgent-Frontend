@@ -132,11 +132,8 @@ const Error = styled.p`
   font-size: 13px;
 `;
 
-export function BotPage({ auth }) {
-  const { status, turns, error, start, stop, isActive } = useVoiceAgent(
-    auth?.access_token,
-    auth?.user?.email,
-  );
+export function BotPage() {
+  const { status, turns, error, start, stop, isActive } = useVoiceAgent();
 
   return (
     <Page>
@@ -147,7 +144,7 @@ export function BotPage({ auth }) {
           </Badge>
           <h1>Talk to the real estate agent.</h1>
           <p>
-            Your email is ready for online meeting invites.
+            Meeting invites and admin follow-ups are handled automatically.
           </p>
           {error && <Error>{error}</Error>}
         </Side>
@@ -180,7 +177,7 @@ export function BotPage({ auth }) {
                 <Icon name="stop" size={16} /> Stop
               </Button>
             ) : (
-              <Button onClick={start} disabled={!auth?.user?.email}>
+              <Button onClick={start}>
                 <Icon name="mic" size={16} /> Start talking
               </Button>
             )}

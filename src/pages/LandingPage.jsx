@@ -1,5 +1,4 @@
 import styled from "styled-components";
-import { useState } from "react";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Container from "../components/ui/Container";
@@ -63,51 +62,6 @@ const Actions = styled.div`
   gap: 12px;
   flex-wrap: wrap;
   margin-top: 30px;
-`;
-
-const EmailForm = styled.form`
-  margin-top: 30px;
-  max-width: 560px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  padding: 10px;
-  border: 1px solid rgba(255,255,255,0.72);
-  border-radius: 999px;
-  background: rgba(255,255,255,0.48);
-  box-shadow: ${({ theme }) => theme.shadows.glass};
-  backdrop-filter: blur(24px) saturate(170%);
-
-  input {
-    min-width: 0;
-    padding: 0 14px;
-    border: 0;
-    outline: 0;
-    background: transparent;
-    color: ${({ theme }) => theme.colors.ink};
-    font-size: 15px;
-    font-weight: 800;
-  }
-
-  input::placeholder {
-    color: ${({ theme }) => theme.colors.faint};
-  }
-
-  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
-    grid-template-columns: 1fr;
-    border-radius: 26px;
-
-    input {
-      min-height: 46px;
-    }
-  }
-`;
-
-const Helper = styled.div`
-  margin-top: 12px;
-  color: ${({ theme, $error }) => ($error ? theme.colors.copper : theme.colors.muted)};
-  font-size: 13px;
-  font-weight: 800;
 `;
 
 const Console = styled.aside`
@@ -192,7 +146,7 @@ const LiveLine = styled.div`
     font-weight: 900;
   }
 
-  .email {
+  .detail {
     color: ${({ theme }) => theme.colors.muted};
     font-size: 13px;
     font-weight: 800;
@@ -258,25 +212,7 @@ const steps = [
   ["cpu", "LLM-based information", "Understands real estate and renovation queries, then responds with useful next steps."],
 ];
 
-function isValidEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-}
-
-export function LandingPage({ auth, navigate, setEmail }) {
-  const [email, setEmailInput] = useState(auth?.user?.email || "");
-  const [error, setError] = useState("");
-
-  const submit = (event) => {
-    event.preventDefault();
-    if (!isValidEmail(email)) {
-      setError("Please enter a valid email address before opening the bot.");
-      return;
-    }
-    setError("");
-    setEmail(email);
-    navigate("/bot");
-  };
-
+export function LandingPage({ navigate }) {
   return (
     <Page>
       <Hero>
@@ -289,31 +225,11 @@ export function LandingPage({ auth, navigate, setEmail }) {
             Qualify buyers, capture renovation needs, schedule Google Meet
             calls, and send clean admin summaries from a real-time voice flow.
           </p>
-          <EmailForm onSubmit={submit}>
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => {
-                setEmailInput(event.target.value);
-                setError("");
-              }}
-              placeholder="Enter your email for meeting invites"
-              aria-label="Email address"
-              required
-            />
-            <Button type="submit" $size="lg">
-              Continue <Icon name="arrowRight" size={17} />
-            </Button>
-          </EmailForm>
-          <Helper $error={Boolean(error)}>
-            {error || "This email will be used for Google Meet invites during the voice call."}
-          </Helper>
           <Actions>
             <Button
               type="button"
-              onClick={submit}
+              onClick={() => navigate("/bot")}
               $size="lg"
-              $variant="secondary"
             >
               Open bot <Icon name="arrowRight" size={17} />
             </Button>
@@ -330,10 +246,10 @@ export function LandingPage({ auth, navigate, setEmail }) {
           </Orb>
           <LiveLine>
             <div className="row">
-              <span>Meeting email</span>
+              <span>Scheduling</span>
               <span className="status"><Icon name="shield" size={14} /> ready</span>
             </div>
-            <span className="email">{auth?.user?.email || "Add your email to continue"}</span>
+            <span className="detail">Calendar invites and admin summaries are handled automatically.</span>
           </LiveLine>
         </Console>
       </Hero>

@@ -1,6 +1,5 @@
 import styled from "styled-components";
 import Container from "../ui/Container";
-import Button from "../ui/Button";
 import { Icon } from "../ui/Icon";
 
 const Header = styled.header`
@@ -74,29 +73,7 @@ const NavLinks = styled.nav`
   }
 `;
 
-const Right = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-
-  .email {
-    max-width: 180px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: ${({ theme }) => theme.colors.muted};
-    font-size: 13px;
-    font-weight: 800;
-    white-space: nowrap;
-  }
-
-  @media (max-width: ${({ theme }) => theme.breakpoints.sm}) {
-    .email {
-      display: none;
-    }
-  }
-`;
-
-export function Navbar({ path, navigate, auth, logout }) {
+export function Navbar({ path, navigate }) {
   const go = (event, nextPath) => {
     event.preventDefault();
     navigate(nextPath);
@@ -119,16 +96,6 @@ export function Navbar({ path, navigate, auth, logout }) {
             Bot
           </a>
         </NavLinks>
-        <Right>
-          {auth && <span className="email">{auth.user.email}</span>}
-          {auth ? (
-            <Button type="button" $variant="secondary" onClick={logout}>
-              Change email
-            </Button>
-          ) : (
-            <span className="email">Add email to start</span>
-          )}
-        </Right>
       </Inner>
     </Header>
   );
